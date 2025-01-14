@@ -1,0 +1,72 @@
+# Sample GitHub Actions workflow for a Spring Boot HelloWorld app
+# This workflow includes:
+# - Building and versioning the app
+# - Publishing to Maven Central
+# - Deploying to Render (or similar free hosting service)
+# - Using tags for releases
+
+name: Spring Boot Showcase CI/CD
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Build with Gradle
+        run: ./gradlew build
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+          server-id: maven-central
+          server-username: ${{ secrets.MAVEN_USERNAME }}
+          server-password: ${{ secrets.MAVEN_PASSWORD }}
+
+      - name: Publish
+        run: ./gradlew publish
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Render
+        run: |
+          curl -X POST \ 
+          -H "Accept: application/json" \ 
+          -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \ 
+          -H "Content-Type: application/json" \ 
+          -d '{
+            "serviceId": "${{ secrets.RENDER_SERVICE_ID }}",
+            "branch": "main",
+            "commit": "${{ github.sha }}",
+            "version": "${{ github.ref_name }}"
+          }' \ 
+          https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys
