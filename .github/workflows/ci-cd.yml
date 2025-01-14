@@ -32,7 +32,7 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
 
       - name: Build Docker Image
-        run: docker build --build-arg JAR_FILE=your-app-${{ github.ref_name }}.jar -t ${{ secrets.DOCKER_USERNAME }}/release-demo:${{ github.ref_name }} .
+        run: docker build --build-arg JAR_FILE=releasedemo-${{ github.ref_name }}.jar -t ${{ secrets.DOCKER_USERNAME }}/release-demo:${{ github.ref_name }} .
 
   publish:
     needs: build
