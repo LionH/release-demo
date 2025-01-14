@@ -1,4 +1,4 @@
-# Updated GitHub Actions workflow to ensure Gradle is installed
+# Updated GitHub Actions workflow to use the Gradle Setup Action with JDK 21 and Gradle 8.4
 
 name: Spring Boot Showcase CI/CD
 
@@ -21,14 +21,13 @@ jobs:
           java-version: 21
           distribution: temurin
 
-      - name: Install Gradle
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gradle
-          gradle --version
+      - name: Set up Gradle
+        uses: gradle/setup-gradle@v2
+        with:
+          gradle-version: 8.4
 
       - name: Build with Gradle
-        run: gradle build
+        run: ./gradlew build
 
   publish:
     needs: build
@@ -48,7 +47,7 @@ jobs:
           server-password: ${{ secrets.MAVEN_PASSWORD }}
 
       - name: Publish
-        run: gradle publish
+        run: ./gradlew publish
 
   deploy:
     needs: build
