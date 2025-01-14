@@ -1,4 +1,4 @@
-# Updated GitHub Actions workflow to use the Gradle Setup Action with JDK 21 and Gradle 8.4
+# Updated GitHub Actions workflow for building, publishing, and deploying with Docker and Maven
 
 name: Spring Boot Showcase CI/CD
 
@@ -28,33 +28,56 @@ jobs:
 
       - name: Build with Gradle
         run: ./gradlew build
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
+      - name: Build Docker Image
+        run: docker build --build-arg JAR_FILE=your-app-${{ github.ref_name }}.jar -t ${{ secrets.DOCKER_USERNAME }}/release-demo:${{ github.ref_name }} .
 
   publish:
     needs: build
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+
       - name: Publish to Maven Central
         run: ./gradlew publish
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
 
-  deploy:
+  docker-push:
     needs: build
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to Render
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Push Docker Image
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/release-demo:${{ github.ref_name }}
+
+  deploy:
+    needs: docker-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render Deployment
         run: |
-          curl -X POST 
-          -H "Accept: application/json" 
-          -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" 
-          -H "Content-Type: application/json" 
-          -d '{
-            "serviceId": "${{ secrets.RENDER_SERVICE_ID }}",
-            "branch": "main",
-            "commit": "${{ github.sha }}",
-            "version": "${{ github.ref_name }}"
-          }' 
-          https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys
+          curl -X POST \
+            -H "Accept: application/json" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "serviceId": "${{ secrets.RENDER_SERVICE_ID }}",
+              "image": "${{ secrets.DOCKER_USERNAME }}/release-demo:${{ github.ref_name }}"
+            }' \
+            https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys
