@@ -32,8 +32,9 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          docker build --build-arg JAR_FILE=releasedemo-${{ github.ref_name }}.jar -t ${{ secrets.DOCKER_USERNAME }}/release-demo:${{ github.ref_name }} .
-          docker push ${{ secrets.DOCKER_USERNAME }}/release-demo:${{ github.ref_name }}
+          VERSION=$(./gradlew properties | grep "^version:" | awk '{print $2}')
+          docker build --build-arg JAR_FILE=releasedemo-${VERSION}.jar -t ${{ secrets.DOCKER_USERNAME }}/release-demo:${VERSION} .
+          docker push ${{ secrets.DOCKER_USERNAME }}/release-demo:${VERSION}
 
       - name: Import GPG Key
         run: |
